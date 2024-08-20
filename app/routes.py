@@ -4,7 +4,8 @@ from flask_login import current_user, login_user, logout_user, login_required
 from urllib.parse import urlsplit
 import sqlalchemy as sa
 from app import app, db
-from app.form import LoginForm, RegistrationForm, EditProfileForm
+from app.form import LoginForm, RegistrationForm, EditProfileForm,\
+    ResetPasswordRequestForm
 from app.form import  EmptyForm, PostForm
 from app.models import User, Post
 
@@ -148,7 +149,6 @@ def unfollow(username):
     else:
         return redirect(url_for('index'))      
 
-
 @app.route('/explore')
 @login_required
 def explore():
@@ -163,3 +163,20 @@ def explore():
         if posts.has_prev else None
     return render_template('index.html', title='Explore', posts=posts.items,
                            next_url=next_url, prev_url=prev_url)
+    
+@app.route('/reset_password_request', methods=['GET', 'POST'])
+def reset_password_request():
+    """Resets password by triggering the 
+    send mail helper function"""
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    form = ResetPasswordRequestForm()
+    if form.validate_on_submit():
+        query = sa.select(User).where(User.email == form.email.data)
+        user = db.session.scalar(query)
+        # if user:
+        #     send_password_reset_email(user) # func yet to be implemented
+        flash('Check your email for the instructions to reset your password')
+        return redirect(url_for('login'))
+    return render_template('reset_password_request.html',
+                           title='Reset Password', form=form)
