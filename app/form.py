@@ -60,7 +60,7 @@ class EmptyForm(FlaskForm):
     
 class PostForm(FlaskForm):
     """Form to create new posts"""
-    post = TextAreaField('Say Sometting ', validators=[
+    post = TextAreaField('Say Something ', validators=[
         DataRequired(), Length(min=1, max=140)])
     submit = SubmitField('Submit')
     
@@ -68,4 +68,10 @@ class PostForm(FlaskForm):
 class ResetPasswordRequestForm(FlaskForm):
     """Form for reseting password when foirgotten"""
     email = StringField('Email', validators=[DataRequired(), Email()])
+    submit = SubmitField('Request Password Reset')
+
+class ResetPasswordForm(FlaskForm):
+    password = PasswordField('Password', validators=[DataRequired()])
+    password2 = PasswordField(
+        'Repeat Password', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Request Password Reset')

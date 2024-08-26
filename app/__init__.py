@@ -2,6 +2,7 @@ from flask import Flask
 from flask_login import LoginManager
 from flask_mail import Mail
 from flask_migrate import Migrate
+from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
 from logging.handlers import SMTPHandler, RotatingFileHandler 
@@ -14,6 +15,7 @@ app.config.from_object(Config)
 db = SQLAlchemy(app)
 mail = Mail(app)
 migrate = Migrate(app, db)
+moment = Moment(app)
 login = LoginManager(app)
 login.login_view = 'login'
 
@@ -31,6 +33,7 @@ if not app.debug:
             toaddrs=app.config['ADMINS'], subject="Microblog Failure",
             credentials=auth, secure=secure
         )
+        print("This is being tested")
         mail_handler.setLevel(logging.ERROR)
         app.logger.addHandler(mail_handler)
     

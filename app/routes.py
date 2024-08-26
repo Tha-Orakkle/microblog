@@ -4,8 +4,9 @@ from flask_login import current_user, login_user, logout_user, login_required
 from urllib.parse import urlsplit
 import sqlalchemy as sa
 from app import app, db
+from app.email import send_password_reset_email
 from app.form import LoginForm, RegistrationForm, EditProfileForm,\
-    ResetPasswordRequestForm
+    ResetPasswordRequestForm, ResetPasswordForm
 from app.form import  EmptyForm, PostForm
 from app.models import User, Post
 
@@ -47,7 +48,7 @@ def login():
             sa.select(User).where(User.username == form.username.data)
         )
         if user is None or not user.check_password(form.password.data):
-            flash("Invlid username or password")
+            flash("Invalid username or password")
             return redirect(url_for('login'))
         login_user(user, remember=form.remember_me.data)
         next_page = request.args.get('next')
@@ -174,9 +175,25 @@ def reset_password_request():
     if form.validate_on_submit():
         query = sa.select(User).where(User.email == form.email.data)
         user = db.session.scalar(query)
-        # if user:
-        #     send_password_reset_email(user) # func yet to be implemented
+        if user:
+            send_password_reset_email(user)
         flash('Check your email for the instructions to reset your password')
         return redirect(url_for('login'))
     return render_template('reset_password_request.html',
                            title='Reset Password', form=form)
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    user = User.verify_reset_password_token(token)
+    if not user:
+        return redirect(url_for('index'))
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        user.set_password(form.password.data)
+        db.session.commit()
+        flash('Your password has been reset.')
+        return redirect(url_for('login'))
+    return render_template('reset_password.html', title='Reset Password',
+                           form=form)
