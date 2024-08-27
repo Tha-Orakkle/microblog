@@ -1,4 +1,4 @@
-from app import app, db
+from app import cli, app, db
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from app.models import User, Post
