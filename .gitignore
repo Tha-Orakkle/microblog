@@ -1,6 +1,7 @@
 .flaskenv
 app.db
 logs/
+messages.pot
 venv
 __pycache__/
 */__pycache__/

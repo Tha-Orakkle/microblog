@@ -14,6 +14,5 @@ class Config:
     ADMINS = [
         'thaorakkletest@gmail.com', 'adegbiranayinoluwapaul@gmail.com',
         'adegbiranayinoluwa.paul@yahoo.com']
-    
-    POSTS_PER_PAGE = 3
-        
+    POSTS_PER_PAGE = 25
+    LANGUAGES = ['en', 'es']
