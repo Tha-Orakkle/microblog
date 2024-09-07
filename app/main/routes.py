@@ -8,8 +8,9 @@ import sqlalchemy as sa
 
 from app import db
 from app.main import bp
-from app.main.forms import EditProfileForm, EmptyForm, PostForm
-from app.models import User, Post
+from app.main.forms import EditProfileForm, EmptyForm, PostForm, SearchForm, \
+    MessageForm
+from app.models import User, Post, Message
 from app.translate import translate
 
 
@@ -18,6 +19,7 @@ def before_request():
     if current_user.is_authenticated:
         current_user.last_seen = datetime.now(timezone.utc)
         db.session.commit()
+        g.search_form = SearchForm()
     g.locale = str(get_locale())
 
 
@@ -150,3 +152,62 @@ def translate_text():
     return {'text': translate(data['text'],
                               data['source_language'],
                               data['dest_language'])}
+
+
+@bp.route('/search')
+@login_required
+def search():
+    if not g.search_form.validate():
+        return redirect(url_for('main.explore'))
+    page = request.args.get('page', 1, type=int)
+    posts, total = Post.search(g.search_form.q.data, page,
+                               current_app.config['POSTS_PER_PAGE'])
+    next_url = url_for('main.search', q=g.search_form.q.data, page=page + 1) \
+        if total > page * current_app.config['POSTS_PER_PAGE'] else None
+    prev_url = url_for('main.search', q=g.search_form.q.data, page=page - 1) \
+        if page > 1 else None
+    return render_template('search.html', title=_('Search'), posts=posts,
+                           next_url=next_url, prev_url=prev_url)
+
+
+@bp.route('/user/<username>/popup')
+@login_required
+def user_popup(username):
+    user = db.first_or_404(sa.select(User).where(User.username == username))
+    form = EmptyForm()
+    return render_template('user_popup.html', user=user, form=form)
+
+
+@bp.route('/send_message/<recipient>', methods=['GET', 'POST'])
+@login_required
+def send_message(recipient):
+    user = db.session.scalar(sa.select(User).where(User.username == recipient))
+    form = MessageForm()
+    if form.validate_on_submit():
+        msg = Message(author=current_user, recipient=user,
+                      body=form.message.data)
+        db.session.add(msg)
+        db.session.commit()
+        flash(_('Your message has been sent.'))
+        return redirect(url_for('main.user', username=recipient))
+    return render_template('send_message.html', title=_('Send Message'),
+                           form=form, recipient=recipient)
+ 
+@bp.route('/messages')
+@login_required
+def messages():
+    current_user.last_message_read_time = datetime.now(timezone.utc())
+    db.session.commit()
+    page = request.args.get('page', 1, int)
+    query = current_user.messages_received.select().order_by(
+        Message.timestamp.desc())
+    messages = db.paginate(query, page,
+                           per_page=current_app.config['POSTS_PER_PAGE'],
+                           error_out=False)
+    next_url = url_for('main.messages', page=messages.next_num) \
+        if messages.has_next else None
+    prev_url = url_for('main.messages', page=messages.prev_num) \
+        if messages.has_prev else None
+    return render_template(
+        'messages.html', title=_('Messages'), messages=messages.items,
+        next_url=next_url, prev_url=prev_url)
