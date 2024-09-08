@@ -6,6 +6,7 @@ from time import time
 from typing import Optional
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
+import json
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from app import db, login
@@ -88,6 +89,8 @@ class User(UserMixin, db.Model):
         foreign_keys='Message.sender_id', back_populates='author')
     messages_received: so.WriteOnlyMapped['Message'] = so.relationship(
         foreign_keys='Message.recipient_id', back_populates='recipient')
+    notifications: so.WriteOnlyMapped['Notification'] = so.relationship(
+        back_populates='user')
 
     def __repr__(self):
         return "<User {}>".format(self.username)
@@ -165,11 +168,19 @@ class User(UserMixin, db.Model):
         
     def unread_messages_count(self):
         last_read_time = self.last_message_read_time or datetime(1900, 1, 1)
-        query = sa.select('Message').where(Message.recipient == self,
+        query = sa.select(Message).where(Message.recipient == self,
                                            Message.timestamp > last_read_time)
         return db.session.scalar(sa.select(sa.func.count()).select_from(
             query.subquery()))
 
+    def add_notification(self, name, data):
+        db.session.execute(self.notifications.delete().where(
+            Notification.name == name))
+        n = Notification(name=name, payload_json=json.dumps(data), user=self)
+        db.session.add(n)
+        return n
+    
+    
 @login.user_loader
 def load_user(id):
     return db.session.get(User, int(id))
@@ -206,3 +217,16 @@ class Message(db.Model):
 
     def __repr__(self):
         return "<Messgae {}>".format(self.body)
+
+
+class Notification(db.Model):
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    name: so.Mapped[str] = so.mapped_column(sa.String(128), index=True)
+    user_id: so.Mapped[int]  = so.mapped_column(sa.ForeignKey(User.id),
+                                                index=True)
+    timestamp: so.Mapped[float] = so.mapped_column(index=True, default=time)
+    payload_json: so.Mapped[str] = so.mapped_column(sa.Text)
+    user: so.Mapped[User] = so.relationship(back_populates='notifications')
+    
+    def get_data(self):
+        return json.loads(str(self.payload_json))
