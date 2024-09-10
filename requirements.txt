@@ -1,5 +1,6 @@
 aiosmtpd==1.4.6
 alembic==1.13.2
+async-timeout==4.0.3
 atpublic==5.0
 attrs==24.2.0
 babel==2.16.0
@@ -44,7 +45,9 @@ pyasn1_modules==0.4.0
 PyJWT==2.9.0
 python-dotenv==1.0.1
 pytz==2024.1
+redis==5.0.8
 requests==2.32.3
+rq==1.16.2
 rsa==4.9
 six==1.16.0
 soupsieve==2.6
